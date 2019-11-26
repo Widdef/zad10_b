@@ -5,46 +5,48 @@ void list_add_end(list **p, int value)
 {
 	list **marker = p;
 	list *new_el = (list*)malloc(sizeof(list));
-	if(*p == NULL)
-		while (*marker)
-		{
-			marker = &(*marker)->next;
-		}
-	else
-		while ((*marker)->next)
-		{
-			marker = &(*marker)->next;
-		}
-	new_el->prev = *marker;
 	new_el->data = value;
-	new_el->next = *p;
 	if (*p == NULL)
-		*marker = new_el;
+	{
+		(*p) = new_el;
+		new_el->next = *p;
+		new_el->prev = *p;
+	}
 	else
+	{
+		while ((*marker)->next != *p)
+		{
+			marker = &(*marker)->next;
+		}
 		(*marker)->next = new_el;
+		new_el->prev = *marker;
+		new_el->next = *p;
+		(*p)->prev = new_el;
+	}
+
 }
 
 void list_add_start(list **p, int value)
 {
+	list **marker = p;
+	list *new_el = (list*)malloc(sizeof(list));
+	new_el->data = value;
 	if (*p == NULL)
 	{
-		list *new_el = (list*)malloc(sizeof(list));
-		new_el->prev = new_el;
-		new_el->data = value;
-		new_el->next = new_el;
-		*p = new_el;
+		(*p) = new_el;
+		new_el->next = *p;
+		new_el->prev = *p;
 	}
 	else
 	{
-		list *marker = *p;
-		list *new_el = (list*)malloc(sizeof(list));
-		new_el->data = value;
-		new_el->next = *p;
-		while ((*p)->next != marker)
+		while ((*marker)->next != *p)
 		{
-			(*p) = (*p)->next;
+			marker = &(*marker)->next;
 		}
-		new_el->prev = marker;
+		(*marker)->next = new_el;
+		new_el->prev = *marker;
+		new_el->next = *p;
+		(*p)->prev = new_el;
 		*p = new_el;
 	}
 }
@@ -73,9 +75,11 @@ void list_delete_first(list **p)
 {
 	if (*p != NULL)
 	{
+		list **marker = p;
 		list *tmp = *p;
-		*p = (*p)->next;
-		(*p)->prev = NULL;
+		(*marker)->prev->next = tmp->next;
+		(*marker)->next->prev = tmp->prev;
+		(*p) = tmp->next;
 		free(tmp);
 	}
 }
@@ -85,12 +89,9 @@ void list_delete_last(list **p)
 	if (*p != NULL)
 	{
 		list **marker = p;
-		while ((*marker)->next->next)
-		{
-			marker = &(*marker)->next;
-		}
-		list *tmp = (*marker)->next;
-		(*marker)->next = NULL;
+		list *tmp = (*marker)->prev;
+		tmp->prev->next = *p;
+		(*p)->prev = tmp->prev;
 		free(tmp);
 	}
 }
@@ -101,30 +102,38 @@ int list_find(list **p, int value)
 	int flag = 0;
 	int index = 0;
 	list **marker = p;
-	while (*marker != NULL)
+	if (*p != NULL)
 	{
-		index++;
-		if ((*marker)->data == value)
+		do
 		{
-			flag = 1;
-			break;
+			index++;
+			if ((*marker)->data == value)
+			{
+				flag = 1;
+				break;
+			}
+			marker = &(*marker)->next;
+		} while (*marker != *p);
+		if (flag)
+		{
+			printf("Element exist. Index: %d\n", index);
+			return 1;
 		}
-		marker = &(*marker)->next;
+		printf("Element not exist\n");
+		return 0;
 	}
-	if (flag)
+	else
 	{
-		printf("Element exist. Index: %d\n", index);
-		return 1;
+		printf("Lista pusta\n");
+		return 0;
 	}
-	printf("Element not exist\n");
-	return 0;
 }
 
 void list_find_add_after(list **p, int value, int find)
 {
 	int flag = 0;
 	list **marker = p;
-	while (*marker != NULL)
+	do
 	{
 		if ((*marker)->data == find)
 		{
@@ -132,7 +141,7 @@ void list_find_add_after(list **p, int value, int find)
 			break;
 		}
 		marker = &(*marker)->next;
-	}
+	}while (*marker != *p);
 	if (flag == 1)
 	{
 		list *new_el = (list*)malloc(sizeof(list));
@@ -159,7 +168,7 @@ void list_find_add_before(list **p, int value, int find)
 {
 	int flag = 0;
 	list **marker = p;
-	while (*marker != NULL)
+	do
 	{
 		if ((*marker)->data == find)
 		{
@@ -167,7 +176,7 @@ void list_find_add_before(list **p, int value, int find)
 			break;
 		}
 		marker = &(*marker)->next;
-	}
+	} while (*marker != *p);
 	if (flag == 1)
 	{
 		list *new_el = (list*)malloc(sizeof(list));
@@ -199,14 +208,14 @@ void list_find_delete(list **p, int find)
 		list_delete_first(p);
 		return;
 	}
-	while ((*marker)->next != NULL)
+	while ((*marker)->next != *p)
 	{
 		index++;
 		if ((*marker)->next->data == find)
 			break;
 		marker = &(*marker)->next;
 	}
-	if ((*marker)->next != NULL)
+	if ((*marker)->next != *p)
 	{
 		list *tmp = (*marker)->next;
 		(*marker)->next = (*marker)->next->next;
@@ -214,7 +223,8 @@ void list_find_delete(list **p, int find)
 		free(tmp);
 	}
 	else
-		list_delete_last(p);
+		if(list_find(p, find))
+			list_delete_last(p);
 }
 
 int check_sting(char *str)
@@ -263,6 +273,7 @@ void list_to_file(list *head)
 	int value;
 	char file[256];
 	FILE *fptr;
+	list *tmp = head;
 	do {
 		printf_s("Podaj nazwe pliku: ");
 		scanf("%s", &file);
@@ -277,11 +288,11 @@ void list_to_file(list *head)
 				fclose(fptr);
 				break;
 			}
-			while (head != NULL)
+			do
 			{
 				fprintf(fptr,"%d ", head->data);
 				head = head->next;
-			}
+			} while (head != tmp);
 			printf("Udalo sie zapisac dane do pliku.\n");
 			fclose(fptr);
 			system("PAUSE");
@@ -299,12 +310,12 @@ void list_reverse(list **p)
 	list *next;
 	if (*p == NULL || (*p)->next == NULL)
 		return;
-	while (cur != NULL)
+	do
 	{
 		next = cur->next;
 		cur->next = prev;
 		prev = cur;
 		cur = next;
-	}
+	} while (cur != *p);
 	*p = prev;
 }
